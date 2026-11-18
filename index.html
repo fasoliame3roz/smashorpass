@@ -1,0 +1,916 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Smash or Pass</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0d0d0f;
+    --surface: #161618;
+    --surface2: #1e1e21;
+    --border: rgba(255,255,255,0.08);
+    --border2: rgba(255,255,255,0.14);
+    --text: #f0ede8;
+    --muted: #888;
+    --smash: #3ddc84;
+    --smash-bg: rgba(61,220,132,0.1);
+    --pass: #ff5c5c;
+    --pass-bg: rgba(255,92,92,0.1);
+    --accent: #f0c050;
+    --radius: 14px;
+    --radius-sm: 8px;
+  }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  h1,h2,h3,.logo { font-family: 'Syne', sans-serif; }
+
+  /* ── HEADER ── */
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px 32px;
+    border-bottom: 1px solid var(--border);
+    position: sticky; top: 0; z-index: 100;
+    background: rgba(13,13,15,0.85);
+    backdrop-filter: blur(12px);
+  }
+  .logo { font-size: 22px; font-weight: 800; letter-spacing: -0.5px; }
+  .logo span { color: var(--accent); }
+
+  nav { display: flex; gap: 6px; }
+  .nav-btn {
+    padding: 8px 18px; border-radius: 99px;
+    border: 1px solid var(--border2);
+    background: transparent; color: var(--muted);
+    font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 500;
+    cursor: pointer; transition: all 0.18s;
+  }
+  .nav-btn:hover { color: var(--text); border-color: rgba(255,255,255,0.25); }
+  .nav-btn.active { background: var(--text); color: var(--bg); border-color: transparent; }
+
+  /* ── MAIN ── */
+  main { flex: 1; padding: 40px 32px; max-width: 800px; margin: 0 auto; width: 100%; }
+
+  .page { display: none; }
+  .page.active { display: block; }
+
+  /* ── PLAY PAGE ── */
+  .play-wrap { display: flex; flex-direction: column; align-items: center; gap: 28px; }
+
+  .deck-pick { display: flex; align-items: center; gap: 12px; width: 100%; max-width: 420px; }
+  .deck-pick label { font-size: 13px; color: var(--muted); white-space: nowrap; }
+  .deck-pick select {
+    flex: 1; padding: 10px 14px; border-radius: var(--radius-sm);
+    background: var(--surface2); border: 1px solid var(--border2);
+    color: var(--text); font-family: 'DM Sans',sans-serif; font-size: 14px;
+    cursor: pointer;
+  }
+  .start-btn {
+    padding: 10px 24px; border-radius: 99px;
+    background: var(--accent); color: var(--bg);
+    border: none; font-family: 'Syne',sans-serif; font-size: 14px; font-weight: 700;
+    cursor: pointer; transition: opacity 0.15s;
+  }
+  .start-btn:hover { opacity: 0.88; }
+
+  /* card stack */
+  .card-stage { position: relative; width: 320px; height: 430px; }
+  .card-behind {
+    position: absolute; inset: 0;
+    background: var(--surface); border: 1px solid var(--border2);
+    border-radius: 20px;
+    transform: scale(0.94) translateY(10px);
+    opacity: 0.5;
+  }
+  .sop-card {
+    position: absolute; inset: 0;
+    background: var(--surface);
+    border: 1px solid var(--border2);
+    border-radius: 20px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 18px; padding: 28px;
+    transition: transform 0.4s cubic-bezier(.4,0,.2,1), opacity 0.4s;
+    cursor: grab;
+    z-index: 2;
+  }
+  .sop-card.fly-left  { transform: translateX(-160%) rotate(-22deg); opacity: 0; }
+  .sop-card.fly-right { transform: translateX(160%)  rotate( 22deg); opacity: 0; }
+
+  .card-photo {
+    width: 150px; height: 150px; border-radius: 50%;
+    background: var(--surface2); border: 3px solid var(--border2);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 60px; overflow: hidden; flex-shrink: 0;
+  }
+  .card-photo img { width: 100%; height: 100%; object-fit: cover; }
+  .card-name { font-family: 'Syne',sans-serif; font-size: 24px; font-weight: 700; text-align: center; }
+  .card-tag {
+    font-size: 12px; color: var(--muted);
+    background: var(--surface2); padding: 4px 14px; border-radius: 99px;
+    border: 1px solid var(--border);
+  }
+  .swipe-hint { font-size: 12px; color: var(--muted); }
+
+  /* vote labels */
+  .vote-label {
+    position: absolute; top: 24px;
+    font-family: 'Syne',sans-serif; font-size: 22px; font-weight: 800;
+    padding: 6px 18px; border-radius: 8px; border: 3px solid;
+    opacity: 0; pointer-events: none; transition: opacity 0.15s;
+    transform: rotate(-15deg);
+  }
+  .vote-label.smash { left: 20px; color: var(--smash); border-color: var(--smash); transform: rotate(-12deg); }
+  .vote-label.pass  { right: 20px; color: var(--pass);  border-color: var(--pass);  transform: rotate(12deg); }
+  .vote-label.show  { opacity: 1; }
+
+  /* progress */
+  .progress-track { width: 320px; height: 3px; background: var(--surface2); border-radius: 99px; overflow: hidden; }
+  .progress-fill  { height: 100%; background: var(--accent); border-radius: 99px; transition: width 0.3s; }
+  .progress-label { font-size: 12px; color: var(--muted); }
+
+  /* action buttons */
+  .action-row { display: flex; gap: 20px; }
+  .btn-pass, .btn-smash {
+    padding: 14px 42px; border-radius: 99px;
+    font-family: 'Syne',sans-serif; font-size: 16px; font-weight: 700;
+    border: none; cursor: pointer; transition: transform 0.12s, opacity 0.12s;
+  }
+  .btn-pass  { background: var(--pass-bg);  color: var(--pass);  border: 1px solid var(--pass); }
+  .btn-smash { background: var(--smash-bg); color: var(--smash); border: 1px solid var(--smash); }
+  .btn-pass:hover  { background: rgba(255,92,92,0.2); }
+  .btn-smash:hover { background: rgba(61,220,132,0.2); }
+  .btn-pass:active, .btn-smash:active { transform: scale(0.96); }
+
+  /* results */
+  .results-wrap { display: none; flex-direction: column; align-items: center; gap: 24px; width: 100%; }
+  .results-wrap.show { display: flex; }
+  .results-title { font-family: 'Syne',sans-serif; font-size: 28px; font-weight: 800; }
+  .results-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; width: 100%; max-width: 520px; }
+  .res-col { background: var(--surface); border: 1px solid var(--border2); border-radius: var(--radius); padding: 16px; }
+  .res-col h3 { font-family: 'Syne',sans-serif; font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px; padding-bottom: 10px; border-bottom: 1px solid var(--border); }
+  .res-col.smash h3 { color: var(--smash); }
+  .res-col.pass  h3 { color: var(--pass); }
+  .res-item { display: flex; align-items: center; gap: 10px; padding: 6px 0; font-size: 14px; }
+  .res-avatar { width: 32px; height: 32px; border-radius: 50%; background: var(--surface2); display: flex; align-items: center; justify-content: center; font-size: 16px; overflow: hidden; flex-shrink: 0; }
+  .res-avatar img { width: 100%; height: 100%; object-fit: cover; }
+  .again-btn {
+    padding: 12px 36px; border-radius: 99px;
+    background: var(--accent); color: var(--bg);
+    border: none; font-family: 'Syne',sans-serif; font-size: 15px; font-weight: 700;
+    cursor: pointer; transition: opacity 0.15s;
+  }
+  .again-btn:hover { opacity: 0.88; }
+
+  .empty-play {
+    text-align: center; color: var(--muted); padding: 60px 0;
+    font-size: 15px; line-height: 1.7;
+  }
+  .empty-play strong { color: var(--text); font-weight: 500; }
+
+  /* ── TEMPLATES PAGE ── */
+  .tmpl-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
+  .tmpl-header h2 { font-size: 22px; font-weight: 700; }
+  .new-btn {
+    padding: 10px 22px; border-radius: 99px;
+    background: var(--accent); color: var(--bg);
+    border: none; font-family: 'Syne',sans-serif; font-size: 14px; font-weight: 700;
+    cursor: pointer; transition: opacity 0.15s;
+  }
+  .new-btn:hover { opacity: 0.88; }
+
+  .tmpl-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 14px; }
+  .tmpl-card {
+    background: var(--surface); border: 1px solid var(--border2);
+    border-radius: var(--radius); padding: 18px 16px;
+    cursor: pointer; transition: border-color 0.15s, transform 0.12s;
+  }
+  .tmpl-card:hover { border-color: rgba(255,255,255,0.28); transform: translateY(-2px); }
+  .tmpl-card.selected { border-color: var(--accent); border-width: 1.5px; }
+  .tmpl-icon { font-size: 32px; margin-bottom: 10px; }
+  .tmpl-card-name { font-family: 'Syne',sans-serif; font-size: 15px; font-weight: 700; margin-bottom: 4px; }
+  .tmpl-card-count { font-size: 12px; color: var(--muted); }
+  .tmpl-actions { display: flex; gap: 10px; margin-top: 14px; }
+  .edit-btn {
+    padding: 8px 18px; border-radius: 99px;
+    background: transparent; color: var(--text);
+    border: 1px solid var(--border2); font-family: 'DM Sans',sans-serif; font-size: 13px;
+    cursor: pointer; transition: border-color 0.15s;
+  }
+  .edit-btn:hover { border-color: rgba(255,255,255,0.3); }
+  .del-btn {
+    padding: 8px 18px; border-radius: 99px;
+    background: transparent; color: var(--pass);
+    border: 1px solid rgba(255,92,92,0.3); font-family: 'DM Sans',sans-serif; font-size: 13px;
+    cursor: pointer; transition: background 0.15s;
+  }
+  .del-btn:hover { background: var(--pass-bg); }
+  .tmpl-empty { color: var(--muted); font-size: 15px; padding: 40px 0; text-align: center; grid-column: 1/-1; }
+
+  /* ── EDITOR PAGE ── */
+  .editor-header { display: flex; align-items: center; gap: 14px; margin-bottom: 28px; }
+  .back-btn {
+    padding: 8px 16px; border-radius: 99px;
+    background: transparent; color: var(--muted);
+    border: 1px solid var(--border2); font-family: 'DM Sans',sans-serif; font-size: 13px;
+    cursor: pointer; transition: color 0.15s;
+  }
+  .back-btn:hover { color: var(--text); }
+  .editor-header h2 { font-size: 20px; font-weight: 700; flex: 1; }
+  .save-btn {
+    padding: 10px 24px; border-radius: 99px;
+    background: var(--accent); color: var(--bg);
+    border: none; font-family: 'Syne',sans-serif; font-size: 14px; font-weight: 700;
+    cursor: pointer; transition: opacity 0.15s;
+  }
+  .save-btn:hover { opacity: 0.88; }
+
+  .field-label { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 6px; }
+  .deck-name-input {
+    width: 100%; padding: 12px 16px; margin-bottom: 24px;
+    background: var(--surface); border: 1px solid var(--border2);
+    border-radius: var(--radius-sm); color: var(--text);
+    font-family: 'Syne',sans-serif; font-size: 18px; font-weight: 700;
+    outline: none; transition: border-color 0.15s;
+  }
+  .deck-name-input:focus { border-color: var(--accent); }
+
+  .emoji-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 24px; }
+  .emoji-opt {
+    width: 42px; height: 42px; border-radius: var(--radius-sm);
+    background: var(--surface2); border: 1px solid var(--border);
+    font-size: 22px; cursor: pointer; display: flex; align-items: center; justify-content: center;
+    transition: border-color 0.15s;
+  }
+  .emoji-opt.picked { border-color: var(--accent); background: rgba(240,192,80,0.12); }
+
+  .person-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px; }
+  .person-row {
+    display: grid; grid-template-columns: 52px 1fr 1fr 36px;
+    gap: 10px; align-items: center;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius-sm); padding: 10px 12px;
+  }
+  .avatar-wrap {
+    width: 44px; height: 44px; border-radius: 50%;
+    background: var(--surface2); border: 1px dashed var(--border2);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px; cursor: pointer; overflow: hidden; position: relative;
+    transition: border-color 0.15s;
+  }
+  .avatar-wrap:hover { border-color: rgba(255,255,255,0.3); }
+  .avatar-wrap input[type=file] { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+  .avatar-wrap img { width: 100%; height: 100%; object-fit: cover; }
+  .person-input {
+    padding: 8px 12px; border-radius: var(--radius-sm);
+    background: var(--surface2); border: 1px solid var(--border);
+    color: var(--text); font-family: 'DM Sans',sans-serif; font-size: 14px;
+    outline: none; transition: border-color 0.15s; width: 100%;
+  }
+  .person-input:focus { border-color: var(--accent); }
+  .remove-btn {
+    width: 30px; height: 30px; border-radius: 50%;
+    background: transparent; border: 1px solid var(--border);
+    color: var(--muted); font-size: 16px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.15s; line-height: 1;
+  }
+  .remove-btn:hover { background: var(--pass-bg); color: var(--pass); border-color: var(--pass); }
+
+  .add-person-btn {
+    width: 100%; padding: 12px;
+    background: transparent; border: 1px dashed var(--border2);
+    border-radius: var(--radius-sm); color: var(--muted);
+    font-family: 'DM Sans',sans-serif; font-size: 14px;
+    cursor: pointer; transition: border-color 0.15s, color 0.15s;
+  }
+  .add-person-btn:hover { border-color: rgba(255,255,255,0.3); color: var(--text); }
+
+  .toast {
+    position: fixed; bottom: 32px; left: 50%; transform: translateX(-50%);
+    background: var(--surface2); border: 1px solid var(--border2);
+    color: var(--text); padding: 12px 24px; border-radius: 99px;
+    font-size: 14px; opacity: 0; transition: opacity 0.3s;
+    pointer-events: none; z-index: 9999;
+  }
+  .toast.show { opacity: 1; }
+
+  .hdr-btns { display: flex; gap: 10px; }
+  .ghost-btn {
+    padding: 10px 20px; border-radius: 99px; background: transparent; color: var(--text);
+    border: 1px solid var(--border2); font-family: 'Syne',sans-serif; font-size: 14px; font-weight: 700;
+    cursor: pointer; transition: border-color 0.15s;
+  }
+  .ghost-btn:hover { border-color: rgba(255,255,255,0.35); }
+  .tmpl-actions { flex-wrap: wrap; }
+  .share-btn {
+    padding: 8px 18px; border-radius: 99px; background: transparent; color: var(--accent);
+    border: 1px solid rgba(240,192,80,0.35); font-family: 'DM Sans',sans-serif; font-size: 13px;
+    cursor: pointer; transition: background 0.15s;
+  }
+  .share-btn:hover { background: rgba(240,192,80,0.1); }
+
+  .modal-bg {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.7); backdrop-filter: blur(4px);
+    display: none; align-items: center; justify-content: center; z-index: 500; padding: 20px;
+  }
+  .modal-bg.show { display: flex; }
+  .modal {
+    background: var(--surface); border: 1px solid var(--border2); border-radius: 18px;
+    padding: 26px; width: 100%; max-width: 480px; display: flex; flex-direction: column; gap: 14px;
+  }
+  .modal h3 { font-size: 20px; font-weight: 800; }
+  .modal p { font-size: 13px; color: var(--muted); line-height: 1.6; }
+  .modal textarea {
+    width: 100%; height: 110px; resize: none; padding: 10px 12px;
+    background: var(--surface2); border: 1px solid var(--border2); border-radius: var(--radius-sm);
+    color: var(--text); font-family: monospace; font-size: 11px; outline: none;
+  }
+  .modal textarea:focus { border-color: var(--accent); }
+  .modal-row { display: flex; gap: 10px; flex-wrap: wrap; }
+  .modal-row button { flex: 1; min-width: 120px; }
+  .file-pick { position: relative; overflow: hidden; text-align: center; }
+  .file-pick input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+  .close-link { background: none; border: none; color: var(--muted); font-size: 13px; cursor: pointer; align-self: center; }
+  .close-link:hover { color: var(--text); }
+
+  /* scrollbar */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--surface2); border-radius: 99px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">Smash<span>or</span>Pass</div>
+  <nav>
+    <button class="nav-btn active" onclick="showPage('play')">Play</button>
+    <button class="nav-btn" onclick="showPage('templates')">My Decks</button>
+  </nav>
+</header>
+
+<main>
+
+  <!-- ── PLAY PAGE ── -->
+  <div class="page active" id="page-play">
+    <div class="play-wrap" id="play-setup">
+      <div class="deck-pick">
+        <label>Choose a deck</label>
+        <select id="deck-select"></select>
+        <button class="start-btn" onclick="startGame()">Start ▶</button>
+      </div>
+      <div id="play-empty" class="empty-play" style="display:none">
+        No decks yet! Go to <strong>My Decks</strong> and create one first.
+      </div>
+    </div>
+
+    <!-- game area (hidden until started) -->
+    <div id="game-area" style="display:none">
+      <div class="play-wrap">
+        <div class="progress-label" id="prog-label">Card 1 of 5</div>
+        <div class="progress-track"><div class="progress-fill" id="prog-fill" style="width:0%"></div></div>
+
+        <div class="card-stage">
+          <div class="card-behind" id="card-behind"></div>
+          <div class="sop-card" id="main-card">
+            <div class="vote-label smash" id="lbl-smash">SMASH 💚</div>
+            <div class="vote-label pass"  id="lbl-pass">PASS ❌</div>
+            <div class="card-photo" id="card-photo"></div>
+            <div class="card-name"  id="card-name"></div>
+            <div class="card-tag"   id="card-tag"></div>
+            <div class="swipe-hint">swipe or use buttons below</div>
+          </div>
+        </div>
+
+        <div class="action-row">
+          <button class="btn-pass"  onclick="vote('pass')">❌ Pass</button>
+          <button class="btn-smash" onclick="vote('smash')">💚 Smash</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- results -->
+    <div class="results-wrap" id="results-wrap">
+      <div class="results-title">Results 🎉</div>
+      <div class="results-cols">
+        <div class="res-col smash">
+          <h3>Smashed</h3>
+          <div id="smash-list"></div>
+        </div>
+        <div class="res-col pass">
+          <h3>Passed</h3>
+          <div id="pass-list"></div>
+        </div>
+      </div>
+      <button class="again-btn" onclick="resetGame()">Play Again</button>
+    </div>
+  </div>
+
+  <!-- ── TEMPLATES PAGE ── -->
+  <div class="page" id="page-templates">
+    <div class="tmpl-header">
+      <h2>My Decks</h2>
+      <div class="hdr-btns"><button class="ghost-btn" onclick="openImport()">⬇ Import</button><button class="new-btn" onclick="newDeck()">+ New Deck</button></div>
+    </div>
+    <div class="tmpl-grid" id="tmpl-grid"></div>
+  </div>
+
+  <!-- ── EDITOR PAGE ── -->
+  <div class="page" id="page-editor">
+    <div class="editor-header">
+      <button class="back-btn" onclick="showPage('templates')">← Back</button>
+      <h2 id="editor-title">New Deck</h2>
+      <button class="save-btn" onclick="saveDeck()">Save Deck</button>
+    </div>
+
+    <div class="field-label">Deck Name</div>
+    <input class="deck-name-input" id="deck-name-input" placeholder="e.g. Celebrities, Anime, Friends…" />
+
+    <div class="field-label">Icon</div>
+    <div class="emoji-row" id="emoji-row"></div>
+
+    <div class="field-label" style="margin-bottom:10px">People</div>
+    <div class="person-list" id="person-list"></div>
+    <button class="add-person-btn" onclick="addPersonRow()">+ Add Person</button>
+  </div>
+
+</main>
+
+<!-- SHARE MODAL -->
+<div class="modal-bg" id="share-modal">
+  <div class="modal">
+    <h3>Share this deck</h3>
+    <p>Send the code in a chat, or download the file and send that. Anyone with a copy of this game can import it under <strong>My Decks → Import</strong>.</p>
+    <textarea id="share-code" readonly></textarea>
+    <div class="modal-row">
+      <button class="new-btn" onclick="copyShareCode()">Copy code</button>
+      <button class="ghost-btn" onclick="downloadDeck()">Download file</button>
+    </div>
+    <button class="close-link" onclick="closeModals()">Close</button>
+  </div>
+</div>
+
+<!-- IMPORT MODAL -->
+<div class="modal-bg" id="import-modal">
+  <div class="modal">
+    <h3>Import a deck</h3>
+    <p>Paste a share code someone sent you, or pick a deck file.</p>
+    <textarea id="import-code" placeholder="Paste share code here…"></textarea>
+    <div class="modal-row">
+      <button class="new-btn" onclick="importFromText()">Import code</button>
+      <div class="ghost-btn file-pick">Choose file<input type="file" accept=".json,.txt,.sop" onchange="importFromFile(this)" /></div>
+    </div>
+    <button class="close-link" onclick="closeModals()">Close</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── STATE ──
+const EMOJIS = ['🌟','🔥','👑','💎','🎭','🎬','🎵','⚡','🌈','🦁','🐉','🍀'];
+let decks = JSON.parse(localStorage.getItem('sop_decks') || '[]');
+let editingId = null;
+let pickedEmoji = '🌟';
+
+// game state
+let queue = [], results = { smash: [], pass: [] }, currentIdx = 0;
+let dragStart = null, dragging = false;
+
+// ── UTILS ──
+function save() { localStorage.setItem('sop_decks', JSON.stringify(decks)); }
+function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2); }
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+// ── NAVIGATION ──
+function showPage(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('page-' + name).classList.add('active');
+  const idx = { play: 0, templates: 1 }[name];
+  if (idx !== undefined) document.querySelectorAll('.nav-btn')[idx].classList.add('active');
+  if (name === 'play') renderPlayPage();
+  if (name === 'templates') renderTemplates();
+}
+
+// ── PLAY PAGE ──
+function renderPlayPage() {
+  const sel = document.getElementById('deck-select');
+  const empty = document.getElementById('play-empty');
+  sel.innerHTML = '';
+  if (!decks.length) {
+    empty.style.display = 'block';
+    document.getElementById('play-setup').querySelector('.deck-pick').style.display = 'none';
+    return;
+  }
+  empty.style.display = 'none';
+  document.getElementById('play-setup').querySelector('.deck-pick').style.display = 'flex';
+  decks.forEach(d => {
+    const o = document.createElement('option');
+    o.value = d.id; o.textContent = d.icon + ' ' + d.name + ' (' + d.people.length + ')';
+    sel.appendChild(o);
+  });
+}
+
+function startGame() {
+  const id = document.getElementById('deck-select').value;
+  const deck = decks.find(d => d.id === id);
+  if (!deck || !deck.people.length) { toast('This deck has no people!'); return; }
+  queue = [...deck.people].sort(() => Math.random() - 0.5);
+  results = { smash: [], pass: [] };
+  currentIdx = 0;
+  document.getElementById('play-setup').style.display = 'none';
+  document.getElementById('game-area').style.display = 'block';
+  document.getElementById('results-wrap').classList.remove('show');
+  showCard();
+  setupSwipe();
+}
+
+function showCard() {
+  const p = queue[currentIdx];
+  const total = queue.length;
+  document.getElementById('prog-label').textContent = 'Card ' + (currentIdx+1) + ' of ' + total;
+  document.getElementById('prog-fill').style.width = (currentIdx / total * 100) + '%';
+  document.getElementById('card-behind').style.display = currentIdx + 1 < total ? 'block' : 'none';
+
+  // photo
+  const photo = document.getElementById('card-photo');
+  if (p.img) {
+    photo.innerHTML = '<img src="' + p.img + '" alt="' + p.name + '" />';
+  } else {
+    photo.textContent = p.emoji || '🙂';
+  }
+  document.getElementById('card-name').textContent = p.name || 'Unknown';
+  document.getElementById('card-tag').textContent = p.tag || '';
+
+  // reset card position
+  const card = document.getElementById('main-card');
+  card.style.transition = 'none';
+  card.style.transform = '';
+  card.style.opacity = '';
+  card.classList.remove('fly-left', 'fly-right');
+  document.getElementById('lbl-smash').classList.remove('show');
+  document.getElementById('lbl-pass').classList.remove('show');
+}
+
+function vote(type) {
+  const card = document.getElementById('main-card');
+  if (card.classList.contains('fly-left') || card.classList.contains('fly-right')) return;
+  results[type].push(queue[currentIdx]);
+  card.style.transition = '';
+  card.classList.add(type === 'smash' ? 'fly-right' : 'fly-left');
+  setTimeout(() => {
+    currentIdx++;
+    if (currentIdx >= queue.length) showResults();
+    else showCard();
+  }, 420);
+}
+
+function showResults() {
+  document.getElementById('game-area').style.display = 'none';
+  const wrap = document.getElementById('results-wrap');
+  wrap.classList.add('show');
+
+  ['smash','pass'].forEach(type => {
+    const list = document.getElementById(type + '-list');
+    list.innerHTML = '';
+    if (!results[type].length) {
+      list.innerHTML = '<div style="color:var(--muted);font-size:13px">None</div>';
+      return;
+    }
+    results[type].forEach(p => {
+      const item = document.createElement('div');
+      item.className = 'res-item';
+      const av = document.createElement('div');
+      av.className = 'res-avatar';
+      if (p.img) av.innerHTML = '<img src="' + p.img + '" />';
+      else av.textContent = p.emoji || '🙂';
+      item.appendChild(av);
+      const nm = document.createElement('span');
+      nm.textContent = p.name;
+      item.appendChild(nm);
+      list.appendChild(item);
+    });
+  });
+}
+
+function resetGame() {
+  document.getElementById('results-wrap').classList.remove('show');
+  document.getElementById('play-setup').style.display = 'flex';
+  renderPlayPage();
+}
+
+// ── SWIPE ──
+let swipeReady = false;
+function setupSwipe() {
+  if (swipeReady) return; swipeReady = true;
+  const card = document.getElementById('main-card');
+  card.addEventListener('mousedown', swipeStart);
+  card.addEventListener('touchstart', swipeStart, { passive: true });
+  document.addEventListener('mousemove', swipeMove);
+  document.addEventListener('touchmove', swipeMoveT, { passive: true });
+  document.addEventListener('mouseup', swipeEnd);
+  document.addEventListener('touchend', swipeEnd);
+}
+function swipeStart(e) {
+  dragStart = e.touches ? e.touches[0].clientX : e.clientX;
+  dragging = true;
+}
+function swipeMoveT(e) { swipeMove(e.touches[0]); }
+function swipeMove(e) {
+  if (!dragging) return;
+  const dx = (e.clientX || e.pageX) - dragStart;
+  const card = document.getElementById('main-card');
+  card.style.transition = 'none';
+  card.style.transform = 'translateX(' + dx + 'px) rotate(' + dx * 0.07 + 'deg)';
+  document.getElementById('lbl-smash').classList.toggle('show', dx > 40);
+  document.getElementById('lbl-pass').classList.toggle('show', dx < -40);
+}
+function swipeEnd(e) {
+  if (!dragging) return; dragging = false;
+  const card = document.getElementById('main-card');
+  const tx = parseFloat(card.style.transform.match(/translateX\(([^)]+)px\)/)?.[1] || '0');
+  card.style.transition = '';
+  if (tx > 80) vote('smash');
+  else if (tx < -80) vote('pass');
+  else {
+    card.style.transform = '';
+    document.getElementById('lbl-smash').classList.remove('show');
+    document.getElementById('lbl-pass').classList.remove('show');
+  }
+}
+
+// ── TEMPLATES ──
+function renderTemplates() {
+  const grid = document.getElementById('tmpl-grid');
+  grid.innerHTML = '';
+  if (!decks.length) {
+    grid.innerHTML = '<div class="tmpl-empty">No decks yet. Hit <strong>+ New Deck</strong> to get started!</div>';
+    return;
+  }
+  decks.forEach(d => {
+    const card = document.createElement('div');
+    card.className = 'tmpl-card';
+    card.innerHTML = `
+      <div class="tmpl-icon">${d.icon || '🌟'}</div>
+      <div class="tmpl-card-name">${d.name}</div>
+      <div class="tmpl-card-count">${d.people.length} people</div>
+      <div class="tmpl-actions">
+        <button class="edit-btn" onclick="editDeck('${d.id}')">Edit</button>
+        <button class="share-btn" onclick="openShare('${d.id}')">Share</button>
+        <button class="del-btn" onclick="deleteDeck('${d.id}')">Delete</button>
+      </div>`;
+    grid.appendChild(card);
+  });
+}
+
+function newDeck() {
+  editingId = null;
+  pickedEmoji = '🌟';
+  document.getElementById('deck-name-input').value = '';
+  document.getElementById('editor-title').textContent = 'New Deck';
+  buildEmojiRow();
+  document.getElementById('person-list').innerHTML = '';
+  addPersonRow(); addPersonRow(); addPersonRow();
+  showPage('editor');
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+}
+
+function editDeck(id) {
+  const d = decks.find(x => x.id === id);
+  if (!d) return;
+  editingId = id;
+  pickedEmoji = d.icon || '🌟';
+  document.getElementById('deck-name-input').value = d.name;
+  document.getElementById('editor-title').textContent = 'Edit: ' + d.name;
+  buildEmojiRow();
+  const list = document.getElementById('person-list');
+  list.innerHTML = '';
+  d.people.forEach(p => addPersonRow(p));
+  showPage('editor');
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+}
+
+function deleteDeck(id) {
+  if (!confirm('Delete this deck? This cannot be undone.')) return;
+  decks = decks.filter(d => d.id !== id);
+  save(); renderTemplates(); toast('Deck deleted.');
+}
+
+// ── EDITOR ──
+function buildEmojiRow() {
+  const row = document.getElementById('emoji-row');
+  row.innerHTML = '';
+  EMOJIS.forEach(em => {
+    const btn = document.createElement('button');
+    btn.className = 'emoji-opt' + (em === pickedEmoji ? ' picked' : '');
+    btn.textContent = em;
+    btn.onclick = () => {
+      pickedEmoji = em;
+      document.querySelectorAll('.emoji-opt').forEach(b => b.classList.remove('picked'));
+      btn.classList.add('picked');
+    };
+    row.appendChild(btn);
+  });
+}
+
+function addPersonRow(data = {}) {
+  const list = document.getElementById('person-list');
+  const row = document.createElement('div');
+  row.className = 'person-row';
+
+  const avWrap = document.createElement('div');
+  avWrap.className = 'avatar-wrap';
+  avWrap.innerHTML = data.img
+    ? '<img src="' + data.img + '" />'
+    : '<span style="font-size:20px">📷</span>';
+
+  const fileInput = document.createElement('input');
+  fileInput.type = 'file'; fileInput.accept = 'image/*';
+  fileInput.onchange = () => {
+    const file = fileInput.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = e => {
+      const src = new Image();
+      src.onload = () => {
+        // shrink + center-crop to 300x300 so decks stay small and easy to share
+        const size = 300, c = document.createElement('canvas');
+        c.width = c.height = size;
+        const side = Math.min(src.width, src.height);
+        c.getContext('2d').drawImage(src, (src.width-side)/2, (src.height-side)/2, side, side, 0, 0, size, size);
+        const url = c.toDataURL('image/jpeg', 0.8);
+        avWrap.innerHTML = '';
+        const img = document.createElement('img');
+        img.src = url;
+        avWrap.dataset.img = url;
+        avWrap.appendChild(img);
+        avWrap.appendChild(fileInput);
+      };
+      src.onerror = () => toast('Could not read that image');
+      src.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  };
+  if (data.img) avWrap.dataset.img = data.img;
+  avWrap.appendChild(fileInput);
+
+  const nameIn = document.createElement('input');
+  nameIn.className = 'person-input'; nameIn.placeholder = 'Name';
+  nameIn.value = data.name || '';
+
+  const tagIn = document.createElement('input');
+  tagIn.className = 'person-input'; tagIn.placeholder = 'Tag (optional)';
+  tagIn.value = data.tag || '';
+
+  const rm = document.createElement('button');
+  rm.className = 'remove-btn'; rm.innerHTML = '×';
+  rm.onclick = () => list.removeChild(row);
+
+  row.appendChild(avWrap);
+  row.appendChild(nameIn);
+  row.appendChild(tagIn);
+  row.appendChild(rm);
+  list.appendChild(row);
+}
+
+function saveDeck() {
+  const name = document.getElementById('deck-name-input').value.trim();
+  if (!name) { toast('Please give your deck a name!'); return; }
+
+  const people = [];
+  document.querySelectorAll('#person-list .person-row').forEach(row => {
+    const inputs = row.querySelectorAll('input[type=text], input.person-input:not([type=file])');
+    const nameVal = inputs[0]?.value.trim();
+    const tagVal  = inputs[1]?.value.trim();
+    const imgVal  = row.querySelector('.avatar-wrap')?.dataset.img || '';
+    if (nameVal) people.push({ id: uid(), name: nameVal, tag: tagVal, img: imgVal });
+  });
+
+  if (!people.length) { toast('Add at least one person!'); return; }
+
+  if (editingId) {
+    const d = decks.find(x => x.id === editingId);
+    if (d) { d.name = name; d.icon = pickedEmoji; d.people = people; }
+  } else {
+    decks.push({ id: uid(), name, icon: pickedEmoji, people });
+  }
+
+  save();
+  toast('Deck saved! ✅');
+  setTimeout(() => showPage('templates'), 600);
+}
+
+// ── SHARING ──
+let shareDeckData = null;
+function b64encode(bytes) {
+  let s = ''; const chunk = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunk) s += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk));
+  return btoa(s).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+}
+function b64decode(str) {
+  str = str.replace(/-/g,'+').replace(/_/g,'/');
+  while (str.length % 4) str += '=';
+  return Uint8Array.from(atob(str), c => c.charCodeAt(0));
+}
+async function pipeBytes(bytes, stream) {
+  const out = new Blob([bytes]).stream().pipeThrough(stream);
+  return new Uint8Array(await new Response(out).arrayBuffer());
+}
+function deckPayload(d) {
+  return { name: d.name, icon: d.icon, people: d.people.map(p => ({ name: p.name, tag: p.tag, img: p.img })) };
+}
+async function encodeDeck(d) {
+  const raw = new TextEncoder().encode(JSON.stringify(deckPayload(d)));
+  if (window.CompressionStream) return 'SOP1:' + b64encode(await pipeBytes(raw, new CompressionStream('gzip')));
+  return 'SOP0:' + b64encode(raw);
+}
+async function decodeDeck(code) {
+  code = code.trim();
+  const tag = code.slice(0,5);
+  let bytes = b64decode(code.slice(5));
+  if (tag === 'SOP1:') bytes = await pipeBytes(bytes, new DecompressionStream('gzip'));
+  else if (tag !== 'SOP0:') throw new Error('bad code');
+  return JSON.parse(new TextDecoder().decode(bytes));
+}
+
+async function openShare(id) {
+  const d = decks.find(x => x.id === id);
+  if (!d) return;
+  shareDeckData = d;
+  document.getElementById('share-code').value = 'Making code…';
+  document.getElementById('share-modal').classList.add('show');
+  document.getElementById('share-code').value = await encodeDeck(d);
+}
+function copyShareCode() {
+  const ta = document.getElementById('share-code');
+  ta.select();
+  (navigator.clipboard ? navigator.clipboard.writeText(ta.value) : Promise.resolve(document.execCommand('copy')))
+    .then(() => toast('Code copied! 📋')).catch(() => toast('Press Ctrl+C to copy'));
+}
+function downloadDeck() {
+  if (!shareDeckData) return;
+  const blob = new Blob([JSON.stringify({ sopDeck: 1, ...deckPayload(shareDeckData) })], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = shareDeckData.name.replace(/[^a-z0-9]+/gi,'-').toLowerCase() + '.sop.json';
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+function openImport() {
+  document.getElementById('import-code').value = '';
+  document.getElementById('import-modal').classList.add('show');
+}
+function closeModals() {
+  document.querySelectorAll('.modal-bg').forEach(m => m.classList.remove('show'));
+}
+function addImportedDeck(o) {
+  if (!o || typeof o.name !== 'string' || !Array.isArray(o.people)) throw new Error('bad deck');
+  const people = o.people.filter(p => p && p.name).map(p => ({
+    id: uid(), name: String(p.name), tag: String(p.tag || ''), img: typeof p.img === 'string' ? p.img : ''
+  }));
+  if (!people.length) throw new Error('empty');
+  decks.push({ id: uid(), name: o.name, icon: o.icon || '🌟', people });
+  save(); renderTemplates(); closeModals();
+  toast('Imported "' + o.name + '" ✅');
+}
+async function importText(text) {
+  try {
+    text = text.trim();
+    addImportedDeck(text.startsWith('{') ? JSON.parse(text) : await decodeDeck(text));
+  } catch (e) { toast('That code or file didn’t work'); }
+}
+function importFromText() { importText(document.getElementById('import-code').value); }
+function importFromFile(input) {
+  const f = input.files[0]; if (!f) return;
+  const r = new FileReader();
+  r.onload = e => importText(e.target.result);
+  r.readAsText(f);
+  input.value = '';
+}
+document.querySelectorAll('.modal-bg').forEach(m => m.addEventListener('click', e => { if (e.target === m) closeModals(); }));
+
+// ── INIT ──
+renderPlayPage();
+renderTemplates();
+buildEmojiRow();
+</script>
+</body>
+</html>
